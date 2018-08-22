@@ -1,0 +1,11 @@
+apply plugin: 'kotlin'
+apply plugin: 'kotlin-kapt'
+
+dependencies {
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+
+  implementation project(':api')
+  kapt project(':generator')
+
+  implementation 'org.kodein.di:kodein-di-generic-jvm:5.2.0'
+}
