@@ -143,10 +143,16 @@ class AutobindGenerator : KotlinAbstractProcessor(), KotlinMetadataUtils {
         .onEach(::logModuleProvider)
   }
 
+  val defaultModuleClasses = mutableListOf<ModuleClass>()
   val defaultModuleProperties = mutableListOf<PropertySpec>()
 
   fun createDefaultModule() {
     val file = FileSpec.builder("io.hypno.autobind", "Autobind_DefaultModule")
+        .apply {
+          defaultModuleClasses.forEach { (packageName, className) ->
+            addImport(packageName, className)
+          }
+        }
         .addProperty(PropertySpec.builder("Autobind_DefaultModule", Kodein.Module::class)
             .initializer(CodeBlock.builder()
                 .beginControlFlow("%T(%S)", Kodein.Module::class, "Autobind_DefaultModule")
@@ -185,6 +191,7 @@ class AutobindGenerator : KotlinAbstractProcessor(), KotlinMetadataUtils {
         .single()
 
     if (isDefaultModule) {
+      defaultModuleClasses.add(moduleClass.copy(className = moduleName))
       defaultModuleProperties.add(modulePropertySpec)
     }
 
