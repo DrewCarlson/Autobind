@@ -2,6 +2,7 @@ package io.hypno.autobind
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.asTypeName
+import io.hypno.autobind.processing.safeClassName
 import javax.lang.model.element.Element
 import kotlin.reflect.KClass
 

@@ -1,6 +1,7 @@
-package io.hypno.autobind
+package io.hypno.autobind.processing
 
 import com.squareup.kotlinpoet.CodeBlock
+import io.hypno.autobind.ProviderKind
 import javax.lang.model.element.Element
 
 

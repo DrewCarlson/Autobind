@@ -2,6 +2,10 @@ package io.hypno.autobind
 
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
+import io.hypno.autobind.builders.addBindingProviders
+import io.hypno.autobind.processing.assertHasConstructor
+import io.hypno.autobind.processing.assertHasDistinctBindings
+import io.hypno.autobind.processing.getElementsWithAnnotation
 import me.eugeniomarletti.kotlin.metadata.KotlinMetadataUtils
 import me.eugeniomarletti.kotlin.processing.KotlinAbstractProcessor
 import org.kodein.di.Kodein
@@ -32,6 +36,9 @@ class AutobindGenerator : KotlinAbstractProcessor(), KotlinMetadataUtils {
       Multiton::class,
       Singleton::class
   )
+
+  private val defaultModuleClasses = mutableListOf<ModuleClass>()
+  private val defaultModuleProperties = mutableListOf<PropertySpec>()
 
   override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
     val providerElements = listOf<List<BindingProvider>>(
@@ -96,7 +103,7 @@ class AutobindGenerator : KotlinAbstractProcessor(), KotlinMetadataUtils {
         }
         .onEach {
           // TODO: Validate against ProviderKinds
-          assertHasConstructor(it.element)
+          //assertHasConstructor(it.element)
         }
         .map {
           it.element.asModuleClass() to listOf(it)
@@ -143,11 +150,8 @@ class AutobindGenerator : KotlinAbstractProcessor(), KotlinMetadataUtils {
         .onEach(::logModuleProvider)
   }
 
-  val defaultModuleClasses = mutableListOf<ModuleClass>()
-  val defaultModuleProperties = mutableListOf<PropertySpec>()
-
   fun createDefaultModule() {
-    val file = FileSpec.builder("io.hypno.autobind", "Autobind_DefaultModule")
+    FileSpec.builder("io.hypno.autobind", "Autobind_DefaultModule")
         .apply {
           defaultModuleClasses.forEach { (packageName, className) ->
             addImport(packageName, className)
@@ -155,7 +159,7 @@ class AutobindGenerator : KotlinAbstractProcessor(), KotlinMetadataUtils {
         }
         .addProperty(PropertySpec.builder("Autobind_DefaultModule", Kodein.Module::class)
             .initializer(CodeBlock.builder()
-                .beginControlFlow("%T(%S)", Kodein.Module::class, "Autobind_DefaultModule")
+                .beginControlFlow("\n%T(%S)", Kodein.Module::class, "Autobind_DefaultModule")
                 .apply {
                   defaultModuleProperties.forEach {
                     add("import(%N)\n", it)
@@ -165,44 +169,45 @@ class AutobindGenerator : KotlinAbstractProcessor(), KotlinMetadataUtils {
                 .build())
             .build())
         .build()
-
-    file.writeTo(generatedDir ?: throw IllegalStateException("Please use kapt."))
+        .writeTo(generatedDir ?: throw IllegalStateException("Please use kapt."))
   }
 
   fun generateModule(moduleProvider: ModuleProvider) {
     val (moduleClass, bindingProviders) = moduleProvider
     val moduleName = "Autobind_${moduleClass.className}"
 
-    val moduleDefCodeBlock = CodeBlock.builder()
-        .beginControlFlow("%T(%S)", Kodein.Module::class, moduleName)
-        .addBindingProviders(bindingProviders)
-        .endControlFlow()
-        .build()
+    val moduleDefCodeBlock =
+        CodeBlock.builder()
+            .beginControlFlow("\n%T(%S)", Kodein.Module::class, moduleName)
+            .addBindingProviders(bindingProviders)
+            .endControlFlow()
+            .build()
 
-    val modulePropertySpec = PropertySpec.builder(moduleName, Kodein.Module::class)
-        .initializer(moduleDefCodeBlock)
-        .build()
+    val modulePropertySpec =
+        PropertySpec.builder(moduleName, Kodein.Module::class)
+            .initializer(moduleDefCodeBlock)
+            .build()
 
-    val isDefaultModule = bindingProviders
-        .take(1)
-        .map { (element, providerKinds) ->
-          providerKinds.first().needsDefaultTypeModule(element)
-        }
-        .single()
+    val isDefaultModule =
+        bindingProviders
+            .take(1)
+            .map { (element, providerKinds) ->
+              providerKinds.first().needsDefaultTypeModule(element)
+            }
+            .single()
 
     if (isDefaultModule) {
       defaultModuleClasses.add(moduleClass.copy(className = moduleName))
       defaultModuleProperties.add(modulePropertySpec)
     }
 
-    val file = FileSpec.builder(moduleClass.packageName, moduleName)
+    FileSpec.builder(moduleClass.packageName, moduleName)
         // TODO: Improve import handling
         .addImport("org.kodein.di.generic", "bind", "singleton", "instance", "factory", "multiton", "provider")
         .addImport("org.kodein.di", "weakReference", "softReference", "threadLocal")
         .addProperty(modulePropertySpec)
         .build()
-
-    file.writeTo(generatedDir ?: throw IllegalStateException("Please use kapt."))
+        .writeTo(generatedDir ?: throw IllegalStateException("Please use kapt."))
   }
 
   private fun logModuleProvider(moduleProviders: ModuleProvider) {

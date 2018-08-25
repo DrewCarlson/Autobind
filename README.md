@@ -40,14 +40,18 @@ If you need more flexibility when importing generated bindings, Autobind will ge
 These type specific modules will contain all bindings of that type which do not define a module, duplicate type bindings for a single module MUST include a unique tag.
 The `Autobind_DefaultModule` simply imports all of these type specific modules automatically.
 
-*Note: These rules are not currently implemented, the first compatible constructor is used or an error is thrown*
-When creating a binding at the class level, Autobind looks for the following when selecting a constructor:
-1. Primary constructor, even if multiple are available
-2. No Arg constructor, even if multiple are available
-3. First constructor with `@Inject`
 
-If none of these cases are satisfied, you will receive an error when compiling.
-Ensure your class has a single primary constructor or use the `@Inject` annotation on the one Autobind should use.
+## Constructors
+
+`@Singleton` and `@Provider`:
+1. no-arg constructor
+2. Inject all parameters
+
+`@Multiton` and `@Factory`:
+1. no-arg constructor
+2. forward all params
+
+`@Instance` only works with a no-arg constructor.
 
 ## Example
 
@@ -73,22 +77,21 @@ class Repository(
 ```
 
 ```kotlin
-val Autobind_DataModule: Kodein.Module = Kodein.Module("Autobind_DataModule") {
-  bind() from singleton() {
-    DiskDataSource()
+val Autobind_DataModule = Kodein.Module("Autobind_DataModule") {
+  bind(tag = "TestFactory") from factory { restDataSource: RestDataSource, diskDataSource: DiskDataSource, memoryDataSource: MemoryDataSource -> 
+    Repository(restDataSource, diskDataSource, memoryDataSource)
   }
-  bind() from singleton() {
-    MemoryDataSource()
-  }
-  bind() from singleton() {
-    RestDataSource()
-  }
-  bind() from singleton() {
+  bind() from singleton {
     Repository(instance(), instance(), instance())
   }
-  
-  bind(tag = "TestFactory") from factory { p0: RestDataSource, p1: DiskDataSource, p2: MemoryDataSource -> 
-    Repository(p0, p1, p2)
+  bind() from singleton {
+    DiskDataSource()
+  }
+  bind() from singleton {
+    MemoryDataSource()
+  }
+  bind() from singleton {
+    RestDataSource()
   }
 }
 

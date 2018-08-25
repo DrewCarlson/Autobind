@@ -2,7 +2,7 @@ package io.hypno.autobind
 
 @Factory(tag = "factory")
 @Instance(tag = "instance")
-@Multiton(tag = "multiton")
+@Multiton(tag = "multiton", soft = true)
 @Provider(tag = "provider")
 @Singleton
 class RandomGenerator(
@@ -18,7 +18,7 @@ class DiskDataSource
 @Singleton(DataModule::class)
 class MemoryDataSource
 
-
+@Factory(DataModule::class, tag = "TestFactory")
 @Singleton(DataModule::class)
 class Repository(
     val restDataSource: RestDataSource,

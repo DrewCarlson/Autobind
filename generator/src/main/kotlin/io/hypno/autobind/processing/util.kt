@@ -1,4 +1,4 @@
-package io.hypno.autobind
+package io.hypno.autobind.processing
 
 import com.google.auto.common.MoreTypes
 import com.squareup.kotlinpoet.TypeName
@@ -33,6 +33,9 @@ inline fun <T> T.safeClassName(func: T.() -> KClass<*>) = try {
   MoreTypes.asTypeElement(e.typeMirror).asClassName()
 }
 
+fun <T : Annotation> RoundEnvironment.getElementsWithAnnotation(kclass: KClass<T>) =
+    getElementsAnnotatedWith(kclass.java)
+
 val Element.factoryConstructors
   get() = constructors
       .filter { it.parameterTypes.size in 1..5 }
@@ -41,6 +44,3 @@ val Element.constructors
   get() = enclosedElements
       .filter { it.kind == ElementKind.CONSTRUCTOR }
       .map { it.asType().asExecutableType() }
-
-fun <T : Annotation> RoundEnvironment.getElementsWithAnnotation(kclass: KClass<T>) =
-    getElementsAnnotatedWith(kclass.java)
